@@ -119,6 +119,7 @@
     <ClCompile Include="util_window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="elements.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="util_window.h" />
   </ItemGroup>
