@@ -108,6 +108,7 @@ void Update() {
 	if (!screen_changed)
 		return;
 	DrawDibDraw(hdd, hdc, 0, 0, screen_width, screen_height, &info.bmiHeader, pixels, 0, 0, screen_width, screen_height, 0);
+#pragma omp parallel for
 	for (int i = 0; i < screen_width; i++)
 		for (int j = 0; j < screen_height; j++)
 			set_pixel(i, j, Vec3f(0,0,0));

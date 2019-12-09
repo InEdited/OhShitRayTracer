@@ -34,5 +34,5 @@ void set_pixel(unsigned int x, unsigned int y, Vec3f color);
 void Update();
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-
+void CALLBACK FixedUpdate(HWND hwnd, UINT message, UINT uInt, DWORD dWord);
 #endif 
