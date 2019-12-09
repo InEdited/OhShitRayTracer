@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 #include <math.h>
 #include <algorithm>
 #include "geometry.h"
@@ -16,6 +17,7 @@ const int screen_width =800;
 const int screen_height = 800;
 const int fov = M_PI / 2.;
 std::vector<Vec3f> framebuffer(screen_width*screen_height);
+typedef std::chrono::high_resolution_clock Clock;
 
 
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights);
@@ -67,13 +69,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	Material      ivory(Vec3f(0.4, 0.4, 0.3));
 	Material red_rubber(Vec3f(0.3, 0.1, 0.1));
 	std::vector<Sphere> spheres;
+	float test = -13;
 	spheres.push_back(Sphere(Vec3f(-3, 0, -16), 2, ivory));
 	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, red_rubber));
 	spheres.push_back(Sphere(Vec3f(10, 10, -18), 3, red_rubber));
-	spheres.push_back(Sphere(Vec3f(3, 3, -13), 4, ivory));
-	render(spheres,lights);
-
+	spheres.push_back(Sphere(Vec3f(3, 3, test), 4, ivory));
+	
+	
+	while (1) {
+		auto first_time = Clock::now();
+		render(spheres, lights);
 		putFrame();
+		Update();
+		while(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - first_time).count() < 16);
+		test-=0.2;
+		spheres.back().center = Vec3f(3, 3, test);
+		
+	}
+	
+	
+	
+
+		
+	putFrame();
 		Update();							
 		spheres.pop_back();
 		spheres.push_back(Sphere(Vec3f(3, 3, -19), 4, ivory));
@@ -116,16 +134,16 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
 			framebuffer[i + j * screen_width] = cast_ray(Vec3f(0, 0, 0), dir, spheres, lights);
 		}
 	}
-	std::ofstream ofs; // save the framebuffer to file
-	ofs.open("./out.ppm", std::ios::binary);
-	ofs << "P6\n" << screen_width << " " << screen_height << "\n255\n";
-	for (size_t i = 0; i < screen_height*screen_width; ++i) {
-		Vec3f &c = framebuffer[i];
-		float max = std::max(c[0], std::max(c[1], c[2]));
-		if (max>1) c = c * (1. / max);
-		for (size_t j = 0; j<3; j++) {
-			ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
-		}
-	}
-	ofs.close();
+	//std::ofstream ofs; // save the framebuffer to file
+	//ofs.open("./out.ppm", std::ios::binary);
+	//ofs << "P6\n" << screen_width << " " << screen_height << "\n255\n";
+	//for (size_t i = 0; i < screen_height*screen_width; ++i) {
+	//	Vec3f &c = framebuffer[i];
+	//	float max = std::max(c[0], std::max(c[1], c[2]));
+	//	if (max>1) c = c * (1. / max);
+	//	for (size_t j = 0; j<3; j++) {
+	//		ofs << (char)(255 * std::max(0.f, std::min(1.f, framebuffer[i][j])));
+	//	}
+	//}
+	//ofs.close();
 }
