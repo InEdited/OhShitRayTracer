@@ -39,7 +39,20 @@ bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphe
 			material = spheres[i].material;
 		}
 	}
-	return spheres_dist<1000;
+
+	float checkerboard_dist = std::numeric_limits<float>::max();
+	if (fabs(dir.y)>1e-3) {
+		float d = -(orig.y + 4) / dir.y; // the checkerboard plane has equation y = -4
+		Vec3f pt = orig + dir * d;
+		if (d>0 && fabs(pt.x)<50 && pt.z<-0 && pt.z>-50 && d<spheres_dist) {
+			checkerboard_dist = d;
+			hit = pt;
+			N = Vec3f(0, 1, 0);
+			material.diffuse_color = (int(.5*hit.x + 1000) + int(.5*hit.z)) & 1 ? Vec3f(.3, .3, .3) : Vec3f(0, 0, 0);
+		}
+	}
+
+	return std::min(spheres_dist, checkerboard_dist)<1000;
 }
 
 Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &spheres, const std::vector<Light> &lights, size_t depth = 0) {
@@ -106,20 +119,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	lights.push_back(Light(Vec3f(-20, 20, 20), 1.5));
 	lights.push_back(Light(Vec3f(30, 50, -25), 1.8));
 	lights.push_back(Light(Vec3f(30, 20, 30), 1.7));
-	Material      ivory(1.0, Vec4f(0.6, 0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3), 50.);
+	Material      ivory(1.0, Vec4f(0.6, 0.3, 0.1, 0.0), Vec3f(1, 1, 1), 150.);
 	Material      glass(1.5, Vec4f(0.0, 0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8), 125.);
-	Material red_rubber(1.0, Vec4f(0.9, 0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1), 10.);
+	Material red_rubber(1.0, Vec4f(0.9, 0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1), 100.);
 	Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);
 
 	std::vector<Sphere> spheres;
 	float test = -13;
 	float test2 = 3;
-	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, glass));
-	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -20), 2, red_rubber));
+
 	spheres.push_back(Sphere(Vec3f(10, 10, -18), 3, mirror));
-	spheres.push_back(Sphere(Vec3f(5, -5, -18), 3, mirror));
-	spheres.push_back(Sphere(Vec3f(-5, 3, -20), 4, ivory));
-	spheres.push_back(Sphere(Vec3f(1.5, -0.5, -18), 3, red_rubber));
+	spheres.push_back(Sphere(Vec3f(-3, 2, -16), 2, ivory));
+	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, glass));
+	spheres.push_back(Sphere(Vec3f(5, -0.5, -18), 3, red_rubber));
+	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -20), 2, red_rubber));
 
 
 	render(spheres, lights);
