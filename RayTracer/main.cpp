@@ -23,6 +23,8 @@ typedef std::chrono::high_resolution_clock Clock;
 const Vec3f BACKGROUNDCOLOR = Vec3f(0.5, 0.5, 0.9);
 
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights);
+Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index);
+
 Vec3f reflect(const Vec3f &I, const Vec3f &N) {
 	return I - N * 2.f*(I*N);
 }
@@ -48,8 +50,14 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 		return BACKGROUNDCOLOR; // background color
 	}
 	Vec3f reflect_dir = reflect(dir, N).normalize();
+	Vec3f refract_dir = refract(dir, N, material.refractive_index).normalize();
+
 	Vec3f reflect_orig = reflect_dir * N < 0 ? point - N * 1e-3 : point + N * 1e-3; // offset the original point to avoid occlusion by the object itself
+	Vec3f refract_orig = refract_dir * N < 0 ? point - N * 1e-3 : point + N * 1e-3;
+
 	Vec3f reflect_color = cast_ray(reflect_orig, reflect_dir, spheres, lights, depth + 1);
+	Vec3f refract_color = cast_ray(refract_orig, refract_dir, spheres, lights, depth + 1);
+
 	float diffuse_light_intensity = 0, specular_light_intensity = 0;
 	for (size_t i = 0; i<lights.size(); i++) {
 		Vec3f light_dir = (lights[i].position - point).normalize();
@@ -62,7 +70,20 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 		diffuse_light_intensity += lights[i].intensity * std::max(0.f, light_dir*N);
 		specular_light_intensity += powf(std::max(0.f, reflect(light_dir, N)*dir), material.specular_exponent)*lights[i].intensity;
 	}
-	return material.diffuse_color * diffuse_light_intensity * material.albedo[0] + Vec3f(1., 1., 1.) * specular_light_intensity * material.albedo[1] + reflect_color * material.albedo[2];
+	return material.diffuse_color * diffuse_light_intensity * material.albedo[0] + Vec3f(1., 1., 1.)*specular_light_intensity * material.albedo[1] + reflect_color * material.albedo[2] + refract_color * material.albedo[3];
+}
+
+Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index) { // Snell's law
+	float cosi = -std::max(-1.f, std::min(1.f, I*N));
+	float etai = 1, etat = refractive_index;
+	Vec3f n = N;
+	if (cosi < 0) { // if the ray is inside the object, swap the indices and invert the normal to get the correct result
+		cosi = -cosi;
+		std::swap(etai, etat); n = -N;
+	}
+	float eta = etai / etat;
+	float k = 1 - eta * eta*(1 - cosi * cosi);
+	return k < 0 ? Vec3f(0, 0, 0) : I * eta + n * (eta * cosi - sqrtf(k));
 }
 
 void putFrame() {
@@ -85,23 +106,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	lights.push_back(Light(Vec3f(-20, 20, 20), 1.5));
 	lights.push_back(Light(Vec3f(30, 50, -25), 1.8));
 	lights.push_back(Light(Vec3f(30, 20, 30), 1.7));
-	Material      ivory(Vec3f(0.6, 0.3, 0.1), Vec3f(0.4, 0.4, 0.3), 50.);
-	Material red_rubber(Vec3f(0.9, 0.1, 0.0), Vec3f(0.3, 0.1, 0.1), 10.);
-	Material iron(Vec3f(0.9, 0.1, 0.0), Vec3f(0.6, 0.5, 0), 10.);
-	Material     mirror(Vec3f(0.0, 10.0, 0.8), Vec3f(1.0, 1.0, 1.0), 1425.);
+	Material      ivory(1.0, Vec4f(0.6, 0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3), 50.);
+	Material      glass(1.5, Vec4f(0.0, 0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8), 125.);
+	Material red_rubber(1.0, Vec4f(0.9, 0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1), 10.);
+	Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);
+
 	std::vector<Sphere> spheres;
 	float test = -13;
 	float test2 = 3;
-	spheres.push_back(Sphere(Vec3f(-3, 0, -16), 2, iron));
-	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, red_rubber));
+	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, glass));
+	spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -20), 2, red_rubber));
 	spheres.push_back(Sphere(Vec3f(10, 10, -18), 3, mirror));
 	spheres.push_back(Sphere(Vec3f(5, -5, -18), 3, mirror));
-	spheres.push_back(Sphere(Vec3f(3, 3, -13), 4, ivory));
+	spheres.push_back(Sphere(Vec3f(-5, 3, -20), 4, ivory));
+	spheres.push_back(Sphere(Vec3f(1.5, -0.5, -18), 3, red_rubber));
+
 
 	render(spheres, lights);
 	putFrame();
 	Update();
-	while (1) {
+	while (0) {
 		auto first_time = Clock::now();
 		render(spheres, lights);
 		putFrame();
