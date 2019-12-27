@@ -19,6 +19,43 @@ const int screen_height = 900;
 const int fov = M_PI / 2.;
 std::vector<Vec3f> framebuffer(screen_width*screen_height);
 typedef std::chrono::high_resolution_clock Clock;
+const float noise_amplitude = 1.0;
+
+template <typename T> inline T lerp(const T &v0, const T &v1, float t) {
+	return v0 + (v1 - v0)*std::max(0.f, std::min(1.f, t));
+}
+
+float hash(const float n) {
+	float x = sin(n)*43758.5453f;
+	return x - floor(x);
+}
+
+float noise(const Vec3f &x) {
+	Vec3f p(floor(x.x), floor(x.y), floor(x.z));
+	Vec3f f(x.x - p.x, x.y - p.y, x.z - p.z);
+	f = f * (f*(Vec3f(3.f, 3.f, 3.f) - f * 2.f));
+	float n = p * Vec3f(1.f, 57.f, 113.f);
+	return lerp(lerp(
+		lerp(hash(n + 0.f), hash(n + 1.f), f.x),
+		lerp(hash(n + 57.f), hash(n + 58.f), f.x), f.y),
+		lerp(
+			lerp(hash(n + 113.f), hash(n + 114.f), f.x),
+			lerp(hash(n + 170.f), hash(n + 171.f), f.x), f.y), f.z);
+}
+
+Vec3f rotate(const Vec3f &v) {
+	return Vec3f(Vec3f(0.00, 0.80, 0.60)*v, Vec3f(-0.80, 0.36, -0.48)*v, Vec3f(-0.60, -0.48, 0.64)*v);
+}
+
+float fractal_brownian_motion(const Vec3f &x) {
+	Vec3f p = rotate(x);
+	float f = 0;
+	f += 0.5000*noise(p); p = p * 2.32;
+	f += 0.2500*noise(p); p = p * 3.03;
+	f += 0.1250*noise(p); p = p * 2.61;
+	f += 0.0625*noise(p);
+	return f / 0.9375;
+}
 
 const Vec3f BACKGROUNDCOLOR = Vec3f(0.5, 0.5, 0.9);
 
@@ -35,7 +72,9 @@ bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphe
 		if (spheres[i].ray_intersect(orig, dir, dist_i) && dist_i < spheres_dist) {
 			spheres_dist = dist_i;
 			hit = orig + dir * dist_i;
-			N = (hit - spheres[i].center).normalize();
+			//Vec3f s = Vec3f(hit).normalize(spheres[i].radius);
+			float displacement = -fractal_brownian_motion(hit*3.4)*noise_amplitude;
+			N = (hit - spheres[i].center).normalize() * displacement;
 			material = spheres[i].material;
 		}
 	}
@@ -70,7 +109,7 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &s
 
 	Vec3f reflect_color = cast_ray(reflect_orig, reflect_dir, spheres, lights, depth + 1);
 	Vec3f refract_color = cast_ray(refract_orig, refract_dir, spheres, lights, depth + 1);
-
+	
 	float diffuse_light_intensity = 0, specular_light_intensity = 0;
 	for (size_t i = 0; i<lights.size(); i++) {
 		Vec3f light_dir = (lights[i].position - point).normalize();

@@ -4,7 +4,7 @@ struct Light {
 	float intensity;
 };
 
-struct Material {
+struct Material {	
 	Material(const float &r, const Vec4f &a, const Vec3f &color, const float &spec) : refractive_index(r), albedo(a), diffuse_color(color), specular_exponent(spec) {}
 	Material() : refractive_index(1), albedo(1, 0, 0, 0), diffuse_color(), specular_exponent() {}
 	float refractive_index;
@@ -23,10 +23,12 @@ struct Sphere {
 		Vec3f L = center - orig;
 		float tca = L * dir;
 		float d2 = L * L - tca * tca;
-		if (d2 > radius*radius) return false;
+		float displacement = (sin(16 * L.x)*sin(16 * L.y)*sin(16 * L.z) + 1.) ;
+
+		if (d2 > (radius*radius)) return false;
 		float thc = sqrtf(radius*radius - d2);
-		t0 = tca - thc;
-		float t1 = tca + thc;
+		t0 = tca - thc -displacement;
+		float t1 = tca + thc ;
 		if (t0 < 0) t0 = t1;
 		if (t0 < 0) return false;
 		return true;
